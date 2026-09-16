@@ -52,6 +52,8 @@ function Save-Url($url) {
 Write-Host ("模式: " + $Mode)
 
 if ($Mode -eq 'lan') {
+  New-Item -ItemType File -Force -Path (Join-Path $cfgDir 'ds-mobile-tunnel.off') | Out-Null
+  Remove-Item (Join-Path $cfgDir 'ds-mobile-tunnel.on') -Force -ErrorAction SilentlyContinue
   $null = P '/desktop/disconnect' @{} 30
   Start-Sleep -Seconds 2
   $null = P '/desktop/tunnel/toggle' '{"enable":false}'
@@ -66,6 +68,8 @@ if ($Mode -eq 'lan') {
   return
 }
 
+New-Item -ItemType File -Force -Path (Join-Path $cfgDir 'ds-mobile-tunnel.on') | Out-Null
+Remove-Item (Join-Path $cfgDir 'ds-mobile-tunnel.off') -Force -ErrorAction SilentlyContinue
 $st = J '/desktop/tunnel/status' | ConvertFrom-Json
 $url = $st.url
 if (-not ($st.active -and (DnsOk $url))) {
