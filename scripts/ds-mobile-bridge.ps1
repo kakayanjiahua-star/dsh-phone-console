@@ -6,7 +6,7 @@
 #  5) 持续写 ds-mobile-url.txt 与 ds-mobile-bridge.log。
 param([switch]$Once)
 $ErrorActionPreference = 'SilentlyContinue'
-$cfgDir   = if ($env:DSH_MOBILE_DIR) { $env:DSH_MOBILE_DIR } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+$cfgDir   = 'D:/DeepSeekHarness'
 $statePath= "$cfgDir/ds-mobile-state.json"
 $urlPath  = "$cfgDir/ds-mobile-url.txt"
 $keyPath  = "$cfgDir/ds-phone-notify.json"
@@ -14,9 +14,16 @@ $logPath  = "$cfgDir/ds-mobile-bridge.log"
 $GW_PORT  = 43127
 $Base     = "http://127.0.0.1:$GW_PORT"
 
-$self = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.CommandLine -match 'ds-mobile-bridge\.ps1' -and $_.ProcessId -ne $PID }
-if ($self) { Write-Output 'another instance running; exit'; exit 0 }
+# 单实例：用系统互斥体。进程一死操作系统自动释放，比"匹配命令行"可靠
+#（旧写法会被别的命令行里出现过脚本名的命令误判，导致监视器自己不肯启动）
+try {
+  $script:mutex   = New-Object System.Threading.Mutex($false, 'Local\DSHMobileBridge')
+  $script:gotLock = $script:mutex.WaitOne(0)
+} catch { $script:gotLock = $true }
+if (-not $script:gotLock) { Write-Output 'another instance running; exit'; exit 0 }
+
+# 心跳文件：每轮循环覆盖写一次时间戳；看门狗靠它判断"还活着吗"
+$hbPath = "$cfgDir/ds-mobile-bridge.heartbeat"
 
 function Log-Msg($m) { try { Add-Content -LiteralPath $logPath -Value ("[" + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + "] " + $m) -Encoding UTF8 } catch {} }
 function Read-State { try { Get-Content -Raw -Encoding UTF8 -LiteralPath $statePath | ConvertFrom-Json } catch { $null } }
@@ -111,6 +118,8 @@ foreach ($f in 'lastGatewayPid','tunnelDesired','liveTunnelUrl','lastLanUrl','de
 $loop = 0
 for (;;) {
   $loop++
+  # 心跳：不管有没有网关都写，看门狗据此判断监视器是否还活着
+  try { [System.IO.File]::WriteAllText($hbPath, (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), (New-Object System.Text.UTF8Encoding($false))) } catch {}
   $gwPid = Gateway-Pid
   if (-not $gwPid) {
     if ($state.lastGatewayPid) { Log-Msg "gateway down (was pid=$($state.lastGatewayPid))"; $state.lastGatewayPid=$null; Write-State $state }
