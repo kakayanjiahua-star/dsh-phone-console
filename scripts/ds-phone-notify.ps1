@@ -9,10 +9,9 @@ param(
 )
 $ErrorActionPreference = 'SilentlyContinue'
 
-$baseDir = if ($env:DSH_MOBILE_DIR) { $env:DSH_MOBILE_DIR } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-$cfgPath = Join-Path $baseDir 'ds-phone-notify.json'
-$urlPath = Join-Path $baseDir 'ds-mobile-url.txt'
-$logPath = Join-Path $baseDir 'ds-mobile-bridge.log'
+$cfgPath = 'D:/DeepSeekHarness/ds-phone-notify.json'
+$urlPath = 'D:/DeepSeekHarness/ds-mobile-url.txt'
+$logPath = 'D:/DeepSeekHarness/ds-mobile-bridge.log'
 
 function Log-Msg($m) {
   try { Add-Content -LiteralPath $logPath -Value ("[" + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + "] " + $m) -Encoding UTF8 } catch {}
@@ -26,6 +25,7 @@ try { $u = Get-Content -Raw -Encoding UTF8 -LiteralPath $urlPath; if ($u) { $mob
 switch ($Event) {
   'question' { $title = 'DSH 需要你回答' }
   'prompt'   { $title = 'DSH 收到新任务' }
+  'alert'    { $title = 'DSH 手机桥接告警' }
   default    { $title = 'DSH 本轮完成' }
 }
 
