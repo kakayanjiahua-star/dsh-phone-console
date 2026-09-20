@@ -8,6 +8,21 @@
       "warnBelow": 20,
       "criticalBelow": 8,
       "topUpUrl": "https://platform.deepseek.com/top_up"
+    },
+    {
+      "name": "Bailian free tier (vision model)",
+      "type": "bailian-quota",
+      "model": "qwen3-vl-plus",
+      "warnBelowPercent": 25,
+      "criticalBelowPercent": 10,
+      "expireWarnDays": 14,
+      "topUpUrl": "https://bailian.console.aliyun.com/"
+    },
+    {
+      "name": "Bailian endpoint (live probe)",
+      "type": "bailian-probe",
+      "model": "qwen3-vl-plus",
+      "topUpUrl": "https://bailian.console.aliyun.com/"
     }
   ]
 }
