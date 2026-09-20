@@ -1,0 +1,13 @@
+{
+  "cooldownHours": 12,
+  "targets": [
+    {
+      "name": "DeepSeek official",
+      "type": "deepseek",
+      "keyName": "DEEPSEEK_API_KEY",
+      "warnBelow": 20,
+      "criticalBelow": 8,
+      "topUpUrl": "https://platform.deepseek.com/top_up"
+    }
+  ]
+}

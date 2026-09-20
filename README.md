@@ -86,6 +86,7 @@ notepad D:\dsh\ds-phone-notify.json
 | `scripts/install.ps1` | 一键安装：部署脚本、挂 hooks 桥、注册开机自启 |
 | `scripts/ds-mobile-bridge.ps1` | 常驻监视器：自动开隧道 + 地址变化推送 + URL 缓存 |
 | `scripts/ds-phone-notify.ps1` | 推送脚本：Bark / ntfy + 直达链接 + 本地日志 |
+| `scripts/ds-balance-watch.ps1` | 余额哨兵：查模型账户余额，低于阈值推手机 + 桌面气泡（配 `ds-balance-watch.json`） |
 | `scripts/ds-hooks.json` | Codex hooks 配置（Stop / PostToolUse） |
 | `scripts/ds-patch-cgnat.ps1` | 放行 Tailscale 网段（应用升级后需重打） |
 | `references/setup-guide.zh.md` | 面向用户的图文步骤 |
