@@ -20,6 +20,14 @@ function WaitDns($url, $sec = 90) {
   for ($i = 0; $i -lt [int]($sec / 5); $i++) { if (DnsOk $url) { return $true }; Start-Sleep -Seconds 5 }
   return (DnsOk $url)
 }
+# 本机直连 trycloudflare 是不通的（系统 DNS 查不到 *.trycloudflare.com），所以“活着没”不能只看 DNS，
+# 必须再用本机 mihomo 代理实测一次 HTTP —— 2026-09-24 就是只查 DNS 导致误报“重开失败”。
+function ProxyProbe($url) {
+  if (-not $url) { return $false }
+  $code = (& curl.exe -s -x http://127.0.0.1:7899 --max-time 25 -o NUL -w '%{http_code}' $url | Out-String).Trim()
+  return ($code -match '^(2|3)\d\d$')
+}
+function TunnelLive($url) { return ((DnsOk $url) -or (ProxyProbe $url)) }
 function LanUrl {
   $gw = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceAlias -notmatch 'Tailscale' } | Sort-Object RouteMetric | Select-Object -First 1
   if ($gw) {
@@ -72,17 +80,25 @@ New-Item -ItemType File -Force -Path (Join-Path $cfgDir 'ds-mobile-tunnel.on') |
 Remove-Item (Join-Path $cfgDir 'ds-mobile-tunnel.off') -Force -ErrorAction SilentlyContinue
 $st = J '/desktop/tunnel/status' | ConvertFrom-Json
 $url = $st.url
-if (-not ($st.active -and (DnsOk $url))) {
-  Write-Host '正在重开公网隧道（约 30-90 秒）...' -ForegroundColor Yellow
+if (-not ($st.active -and (TunnelLive $url))) {
+  Write-Host '正在重开公网隧道（约 30-120 秒）...' -ForegroundColor Yellow
   $null = P '/desktop/disconnect' @{} 30
   Start-Sleep -Seconds 2
-  $null = P '/desktop/tunnel/toggle' '{"enable":false}'
-  Start-Sleep -Seconds 3
-  $r = P '/desktop/tunnel/toggle' '{"enable":true}'
-  try { $url = ($r | ConvertFrom-Json).url } catch {}
-  if (-not (DnsOk $url)) { $null = WaitDns $url 90 }
+  for ($try = 1; $try -le 2; $try++) {
+    $null = P '/desktop/tunnel/toggle' '{"enable":false}' 60
+    Start-Sleep -Seconds 4
+    $r = P '/desktop/tunnel/toggle' '{"enable":true}' 150
+    try { $url = ($r | ConvertFrom-Json).url } catch { $url = '' }
+    if (-not $url) { try { $url = (J '/desktop/tunnel/status' | ConvertFrom-Json).url } catch { $url = '' } }
+    if ($url) {
+      for ($i = 0; $i -lt 12; $i++) { if (TunnelLive $url) { break }; Start-Sleep -Seconds 5 }
+      if (TunnelLive $url) { break }
+    }
+    Write-Host ("第 $try 次没起效，再试一次…") -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
+  }
 }
-if ($url -and (DnsOk $url)) {
+if ($url -and (TunnelLive $url)) {
   Save-Url $url
   Write-Host ''
   Write-Host ('公网链接: ' + $url) -ForegroundColor Green
